@@ -92,7 +92,16 @@ indmoney: https://mcp.indmoney.com/mcp (HTTP) - ✓ Connected
 
 ## Installing the Skills
 
-### Option 1 — Global install (recommended)
+### Option 1 — npx skills add (easiest)
+Uses the [skills.sh](https://skills.sh) standard — installs all 6 skills in one command:
+
+```bash
+npx skills add santosh91parsa/DecodeAIwithSantosh/IndianMarket-Skills
+```
+
+This automatically copies all SKILL.md files into your project's `.claude/skills/` directory.
+
+### Option 2 — Global install (available in every session)
 Skills available in every Claude Code session from any directory:
 
 ```bash
@@ -104,7 +113,7 @@ mkdir -p ~/.claude/commands
 cp DecodeAIwithSantosh/IndianMarket-Skills/.claude/commands/*.md ~/.claude/commands/
 ```
 
-### Option 2 — Project-level install
+### Option 3 — Project-level install
 Skills available only when Claude Code is opened from this specific folder:
 
 ```bash
@@ -114,7 +123,7 @@ mkdir -p your-project/.claude/commands
 cp DecodeAIwithSantosh/IndianMarket-Skills/.claude/commands/*.md your-project/.claude/commands/
 ```
 
-### Option 3 — Install individual skills only
+### Option 4 — Install individual skills only
 
 ```bash
 # Example: only install quick-trade and portfolio-alert
