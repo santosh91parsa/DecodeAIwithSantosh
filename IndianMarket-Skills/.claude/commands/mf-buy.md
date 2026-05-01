@@ -1,114 +1,144 @@
 # Mutual Fund Buy Recommendation
 
-Identify the best mutual funds to invest in right now — based on portfolio gaps, market conditions, and goal alignment.
-
-## What This Skill Does
-- Fetches current MF holdings to identify gaps and over-concentration
-- Recommends new funds to add OR top-up existing good funds
-- Covers: Large Cap, Mid Cap, Small Cap, Flexi Cap, ELSS, Debt, International, Sectoral
-- Gives specific fund names, suggested allocation %, and why each makes sense now
+Identify best mutual funds to buy based on portfolio gaps, category trend analysis (3-screen method), performance vs benchmark, and R:R of lump sum vs SIP timing.
 
 ## Execution Steps
 
 ### Step 1 — Fetch current portfolio state
-Use `networth_snapshot` for total portfolio value and asset allocation.
-Use `networth_holdings` to see existing MF positions (names, invested amount, XIRR, category).
-Use `networth_allocation_breakdown` to understand current equity/debt/gold split.
+Use `networth_snapshot` for total portfolio and asset class breakdown.
+Use `networth_holdings` for all MF positions (names, invested, XIRR, category).
+Use `networth_allocation_breakdown` with asset_type "MF" and breakdown_by "assets".
 
 ### Step 2 — Identify portfolio gaps
 
-Check against ideal allocation for a balanced long-term portfolio:
+Ideal MF allocation for a balanced long-term portfolio:
 
-| Category | Ideal Range | Action if Missing |
+| Category | Ideal Range | Gap Action |
 |---|---|---|
-| Large Cap / Index Fund | 30–40% of MF | Add if under-represented |
-| Mid Cap | 15–25% of MF | Add if missing |
-| Small Cap | 10–15% of MF | Add if missing (only if horizon > 5 years) |
-| Flexi Cap / Multi Cap | 15–20% of MF | Add for manager flexibility |
-| Debt / Liquid | 10–15% of MF | Add for stability |
-| International | 5–10% of MF | Add for global diversification |
-| ELSS | Optional | Recommend if user needs tax saving |
+| Large Cap / Index | 25-35% of MF | Add if missing |
+| Mid Cap | 15-20% of MF | Add — strong India growth story |
+| Small Cap | 5-10% of MF | Add only if horizon > 5 years |
+| Flexi / Multi Cap | 15-20% of MF | Max 1-2 funds (avoid overlap) |
+| Debt / Short Duration | 10-15% of MF | Most commonly missing — add urgently |
+| International | 5-10% of MF | Cap at 10% — currency risk |
+| Gold | 5-8% of MF | Good inflation hedge, don't over-allocate |
+| ELSS | Optional | Add if need 80C tax benefit |
 
-Flag if any category is > 40% (over-concentrated).
+Flag over-concentration: any single category > 40% of MF portfolio.
 
-### Step 3 — Fetch top funds in gap categories
-Use `get_mf_by_category` to get top-rated funds in each missing/underweight category.
-Use `get_mf_funds_details` for the top 3 candidates per gap category.
+### Step 3 — Category Trend Analysis (3-Screen Method)
+Before recommending any category, check its trend:
 
-Evaluate each candidate on:
-- 3-year and 5-year XIRR vs category average
-- Expense ratio (direct plan preferred, < 1% for active, < 0.2% for index)
-- AUM size (prefer > ₹5,000 Cr for stability; but mid/small cap can be smaller)
-- Fund manager track record and tenure
-- Consistency: did it outperform in both bull and bear phases?
+**Screen 1 — Long-term category health (weekly, 1Y):**
+- Large Cap: Is Nifty 50 in an uptrend? (higher highs/lows over 6 months)
+- Mid Cap: Is Nifty Midcap 150 above its 6-month average?
+- Small Cap: Is Nifty Smallcap 250 recovering or still in correction?
+- Debt: Are interest rates falling? (RBI rate cut cycle = bullish for duration funds)
+- Gold: Is gold above its 6-month moving average?
 
-### Step 4 — Market context overlay
+**Screen 2 — Current setup:**
+- Is the category pulling back from a high? → Good entry opportunity (buy on dip)
+- Is the category at all-time highs? → SIP preferred over lump sum (average the cost)
+- Is the category in recovery from a 20%+ correction? → Lump sum opportunity
 
-Apply current market conditions (May 2026) to tilt recommendations:
-- **RBI rate cut cycle underway** → Favour duration debt funds (gilt/long-term bond)
-- **Mid/Small cap valuations stretched** → Be selective, prefer quality-focused funds
-- **IT and pharma recovery** → Sector fund opportunity if user has appetite
-- **Rupee stable** → International funds less risky now
-- **Post-election stability** → Infrastructure/PSU theme funds have tailwind
+**Trend verdict per category:**
+- Bullish + pullback → Best entry: Lump sum OR accelerated SIP
+- Bullish + at highs → SIP only (avoid lump sum at peak)
+- Sideways/correcting → SIP only, wait for trend confirmation
+- Downtrend → Avoid until trend turns
 
-### Step 5 — SIP vs Lump Sum guidance
+### Step 4 — Fibonacci Entry Timing for Lump Sum
+For each recommended category, check if it's in a Fibonacci buy zone:
+```
+diff = category_52W_high - category_52W_low  (use index as proxy)
+fib_38 = category_52W_high - diff × 0.382  ← ideal lump sum entry
+fib_61 = category_52W_high - diff × 0.618  ← deep correction entry (great value)
+```
+- Category index in Fib 38.2%–61.8% zone → Lump sum recommended
+- Category index above Fib 23.6% (near highs) → SIP only
+- Category index below Fib 61.8% (deep correction) → Aggressive SIP or small lump sum
 
-For each recommended fund, specify:
-- **SIP preferred:** If market at highs or valuations stretched (average the cost)
-- **Lump Sum OK:** If market corrected > 10% from recent high or category is oversold
-- **Suggested monthly SIP amount:** Based on portfolio size (typically 2–5% of monthly investable surplus per fund)
+### Step 5 — Fetch top funds in gap categories
+Use `get_mf_by_category` for each gap category, sorted by `category_ind_rank`.
+Use `get_mf_funds_details` with `includes: ["fund_performance", "asset_allocation"]` for top 2-3 candidates.
 
-### Step 6 — Output
+Evaluate each candidate:
+- 3Y XIRR vs category average (fund manager alpha)
+- Expense ratio: Active < 1%, Index < 0.3%
+- AUM: > ₹5,000 Cr for large/flexi cap; mid/small cap can be smaller
+- Consistency: outperformed in both bull (2023-24) and consolidation (2025) phases
+- Overlap with existing funds: low overlap preferred
+
+### Step 6 — R:R of Lump Sum vs SIP
+
+**Lump sum is better when:**
+- Category is > 20% below 52W high (clear discount)
+- Fib position: between 38.2%–61.8% retracement
+- Interest rate cycle is turning (for debt funds)
+- Strong catalyst visible (policy, budget, sector tailwind)
+
+**SIP is better when:**
+- Category near 52W highs or above Fib 23.6%
+- Valuations stretched (PE above 5-year average for equity)
+- No clear near-term catalyst
+
+**Aggressive SIP (2× normal amount) when:**
+- Category corrected > 15% from highs but trend still intact (higher lows on weekly)
+- This is the best way to get a lump-sum-like effect with dollar-cost averaging protection
+
+### Step 7 — Output
 
 ```
 ## Mutual Fund Buy Recommendations — [Date]
 
 ### Portfolio Gap Analysis
-Current MF value: ₹X | Equity: Y% | Debt: Z% | International: W%
-Missing: [categories]
-Over-concentrated: [categories if any]
+MF Total: ₹X | Indian Equity: Y% | Global: Z% | Gold: W% | Debt: V%
+Critical gaps: [list categories]
+Over-concentrated: [list if any]
+Category trend summary: [bullish / mixed / cautious]
 
 ---
 
 ### NEW FUNDS TO ADD
 
 #### 1. [Fund Name] — [Category]
-- **Why now:** [market/portfolio reason]
-- **3Y XIRR:** X% vs category avg Y%
-- **Expense ratio:** Z% (Direct plan)
-- **Suggested allocation:** ₹X lump sum OR ₹Y/month SIP
-- **Mode:** SIP / Lump Sum / Both
-- **Investment horizon:** Minimum N years
+- **Category trend:** Bullish / Recovering / Avoid (Screen 1+2 verdict)
+- **Fib entry zone:** Category index at X% retracement → [Lump sum / SIP]
+- **3Y XIRR:** X% vs category avg Y% (alpha: +Z%)
+- **Expense ratio:** X% (Direct plan)
+- **AUM:** ₹X Cr
+- **Why this fund:** [specific edge vs peers]
+- **Suggested entry:** ₹X lump sum OR ₹Y/month SIP
+- **Horizon:** Minimum N years
 
 #### 2. [Fund Name] — [Category]
-[same format]
-
-#### 3. [Fund Name] — [Category]
 [same format]
 
 ---
 
 ### EXISTING FUNDS TO TOP UP
-[Fund Name already in portfolio]
-- Current value: ₹X | XIRR: Y%
-- Why top up: [performing well, underweight, category still has upside]
+[Fund already in portfolio]
+- Current: ₹X | XIRR: Y% — performing well
+- Category at Fib level: [entry opportunity?]
 - Add: ₹X lump sum OR increase SIP by ₹Y/month
 
 ---
 
-### FUNDS TO AVOID RIGHT NOW
-[Category or specific fund type to skip]
-- Reason: [valuation / risk / market timing]
+### AVOID RIGHT NOW
+| Category | Reason | Wait for |
+|---|---|---|
+| [category] | [trend broken / overvalued] | [what signal to look for] |
 
 ---
 
-### Suggested Monthly SIP Plan
-| Fund | SIP Amount | Category |
-|---|---|---|
-| [Fund 1] | ₹X | Large Cap |
-| [Fund 2] | ₹Y | Mid Cap |
-| [Fund 3] | ₹Z | Debt |
-| **Total** | **₹XYZ/month** | |
-```
+### Monthly SIP Plan
+| Fund | SIP | Category | Mode |
+|---|---|---|---|
+| [Fund 1] | ₹X | Mid Cap | Regular SIP |
+| [Fund 2] | ₹Y | Short Duration | Regular SIP |
+| [Fund 3] | ₹Z | Large Cap | Aggressive SIP (2× for 3 months) |
+| **Total** | **₹XYZ** | | |
 
-End with: "All fund recommendations are for long-term wealth creation. Review every 6 months using /mf-sell to weed out underperformers."
+---
+Review your MF portfolio every 6 months with /mf-sell to exit underperformers and redeploy.
+```

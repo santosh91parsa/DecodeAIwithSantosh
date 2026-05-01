@@ -1,70 +1,115 @@
 # Portfolio Red Flags — Quick Sell Scan (Stocks + Mutual Funds)
 
-Scan the full portfolio for stocks and mutual funds that should be exited quickly. Surface red flags clearly with urgency levels.
-
-## What This Skill Does
-- Fetches full portfolio: stocks + mutual funds via networth holdings
-- Checks each position against: analyst sentiment, 52W trend, P&L, concentration risk
-- For MFs: checks category, overlap, underperformance vs peers, expense ratio concerns
-- Returns a prioritized sell list with urgency: SELL NOW / REVIEW / HOLD
+Full portfolio scan using technical analysis, multi-timeframe trend, Fibonacci breakdown levels, RSI signals, and trailing stop triggers — not just P&L numbers.
 
 ## Execution Steps
 
 ### Step 1 — Fetch portfolio holdings
-Use `networth_holdings` to get all current positions including:
-- Indian stocks (units, avg cost, current value, P&L, XIRR)
-- Mutual funds (units, NAV, invested, current, XIRR)
+Use `networth_holdings` for IND_STOCK and MF asset types.
 
-### Step 2 — Fetch details for all stock holdings
-Use `lookup_ind_keys` to resolve stock names from holdings.
-Use `get_indian_stocks_details` with `segments: ["analyst"]` for all holdings in one call.
-Use `get_indian_stocks_ohlc` with `interval: "1week"`, `lookback: "1y"` for top 5 loss-making or sideways positions.
+### Step 2 — Fetch live stock data
+Use `lookup_ind_keys` to resolve all stock holdings.
+Use `get_indian_stocks_details` with `segments: ["analyst"]` for all holdings (batch of 10 max).
+Use `get_indian_stocks_ohlc` with `interval: "1week", lookback: "1y"` for any stock with:
+  - P&L loss > 10%, OR
+  - day_change < -3%, OR
+  - Currently in loss AND analyst upside < 10%
 
-### Step 3 — Red flag criteria for STOCKS
+### Step 3 — Technical Red Flags for STOCKS
 
-Flag as **SELL NOW** if ANY of:
-- Loss > 30% AND analyst target below current price (OR no analyst coverage)
-- Analyst sell% > 60%
-- Stock making 52W lows with no reversal signal
-- Fundamental story broken (sector in structural decline)
+**SELL NOW — Exit this week if ANY of these:**
 
-Flag as **REVIEW** if ANY of:
-- Loss 15–30% AND stock underperforming Nifty over 6 months
-- Analyst upside < 5% (priced in, no more room)
-- High concentration (>15% of portfolio in single stock)
-- Analyst buy% dropped below 40%
+1. **Trend broken:** Stock making lower lows on weekly chart for 3+ consecutive weeks
+2. **Fibonacci breakdown:** Price below 78.6% retracement from 52W high → trend likely over
+   ```
+   fib_78 = 52W_high - (52W_high - 52W_low) × 0.786
+   Flag if: current_price < fib_78
+   ```
+3. **Analyst reversal:** Analyst sell% > 60% OR current price > analyst high target (no upside left)
+4. **Death cross proxy:** Stock more than 25% below 52W high AND 52W low within 5% → near breakdown
+5. **Today crash:** day_change_percentage < -5%
+6. **Deep loss + no thesis:** P&L loss > 30% AND analyst upside < 5%
 
-### Step 4 — Red flag criteria for MUTUAL FUNDS
+**REVIEW — Decide within 2 weeks if ANY of these:**
 
-Flag as **SELL NOW** if ANY of:
-- XIRR negative over 2+ years (consistently losing money)
-- Category overlap >70% with another fund in portfolio (duplication)
-- Debt fund with credit risk / downgrade exposure
+7. **Fibonacci warning zone:** Price between 61.8%–78.6% retracement — last strong support
+   ```
+   fib_61 = 52W_high - (52W_high - 52W_low) × 0.618
+   Flag if: fib_61 > current_price > fib_78
+   ```
+8. **RSI signal:** Stock in loss AND trading near 52W low (within 10%) — momentum near exhaustion
+9. **Analyst conviction drop:** Buy% fell below 40% (weak consensus)
+10. **Trailing stop hit:** If entry was profitable, check if price has dropped > ATR×2 from recent high
+    ```
+    ATR approx = avg(weekly high - weekly low) last 8 weeks
+    Trail check = 52W_high - ATR × 2.0
+    Flag if current_price < trail_check AND position was profitable
+    ```
+11. **Concentration risk:** Single stock > 15% of total portfolio
+12. **Momentum fading:** Stock flat/sideways for 3+ months with no catalyst visible
 
-Flag as **REVIEW** if ANY of:
-- XIRR underperforming category benchmark by >3% over 1 year
-- Large cap fund with >1.5% expense ratio (ETF would be cheaper)
-- Sectoral/thematic fund where sector thesis has played out or reversed
-- More than 4 funds in portfolio that overlap significantly
+### Step 4 — Probabilistic Scenario for flagged stocks
+For each SELL NOW or REVIEW stock, state:
+```
+Bull case (X% probability): [what would make it recover]
+Bear case (Y% probability): [what would push it lower]
+Base case: [most likely path]
+```
+Only maintain position if bull case probability > 40% AND has a clear catalyst.
 
-### Step 5 — Output
+### Step 5 — Red Flags for MUTUAL FUNDS
+
+**SELL NOW:**
+- XIRR negative over 2+ years (consistently underperforming even FD)
+- Debt fund with credit event risk (NAV dropped >1% in a day)
+- Category overlap >70% with another fund (pure duplication, no diversification value)
+- Sectoral fund where the sector's weekly trend is broken (index making lower lows for 3+ months)
+
+**REVIEW:**
+- XIRR underperforming category average by >3% over 1 year
+- Large cap active fund with >1.5% expense ratio (cheaper index alternatives exist)
+- Fund with shrinking AUM (institutional redemptions signal)
+- More than 2 funds in same sub-category (e.g., 3 flexi cap funds)
+- Thematic fund where the theme's momentum has reversed (check underlying index trend)
+
+**HOLD:**
+- Performing within 2% of benchmark
+- Serving a specific uncovered category in portfolio
+
+### Step 6 — R:R Check for Marginal Cases
+For stocks in the REVIEW zone, run a quick R:R check:
+```
+Risk = current_price - stop_level (recent 52W low or Fib 78.6%)
+Reward = analyst mean target - current_price
+R:R = reward ÷ risk
+```
+- R:R ≥ 2:1 → HOLD and set a hard stop
+- R:R < 2:1 → EXIT — risk not justified by remaining upside
+
+### Step 7 — Output
 
 ```
 ## Portfolio Red Flag Report — [Date]
 
-### SELL NOW (Act within this week)
-| Holding | Type | Your P&L | Red Flag | Suggested Action |
-|---|---|---|---|---|
+### SELL NOW (Act this week)
+| Holding | Type | P&L | Technical Flag | R:R | Action |
+|---|---|---|---|---|---|
 
-### REVIEW (Decide within 1 month)
-| Holding | Type | Your P&L | Concern | What to watch |
+### REVIEW (Decide within 2 weeks)
+| Holding | Type | P&L | Concern | Bull Case % | Stop Level |
+|---|---|---|---|---|---|
+
+### SET TRAILING STOP (Protect profits)
+| Holding | Type | P&L | Trail Stop Level | Method |
 |---|---|---|---|---|
+[For profitable positions that are pulling back — set stops to protect gains]
 
 ### HEALTHY (No action needed)
-[Brief list of clean positions]
+[Brief list]
 
 ### Portfolio Health Score: X/10
-[2 lines on overall portfolio quality]
-```
+[Breakdown: trend alignment, diversification, concentration, MF quality]
 
-End with estimated capital freed if all SELL NOW positions are exited, and reinvestment suggestion category (e.g., "move to large-cap quality stocks or index fund").
+### Capital freed if SELL NOW executed: ₹X
+Suggested reallocation: [category]
+```
