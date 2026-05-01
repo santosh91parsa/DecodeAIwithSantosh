@@ -1,4 +1,4 @@
-# indmoney — Claude Code Skills for INDmoney Portfolio Analysis
+# indmoney-alpha — AI-Powered Market Analysis Skills for INDmoney
 
 6 AI-powered slash commands for Indian stock market analysis, portfolio management, and mutual fund recommendations — powered by your live INDmoney portfolio data via MCP.
 
@@ -96,7 +96,7 @@ indmoney: https://mcp.indmoney.com/mcp (HTTP) - ✓ Connected
 Uses the [skills.sh](https://skills.sh) standard — installs all 6 skills in one command:
 
 ```bash
-npx skills add santosh91parsa/DecodeAIwithSantosh/indmoney
+npx skills add santosh91parsa/DecodeAIwithSantosh/indmoney-alpha
 ```
 
 This automatically copies all SKILL.md files into your project's `.claude/skills/` directory.
@@ -110,7 +110,7 @@ git clone https://github.com/santosh91parsa/DecodeAIwithSantosh.git
 
 # Copy skills to global Claude commands directory
 mkdir -p ~/.claude/commands
-cp DecodeAIwithSantosh/indmoney/.claude/commands/*.md ~/.claude/commands/
+cp DecodeAIwithSantosh/indmoney-alpha/.claude/commands/*.md ~/.claude/commands/
 ```
 
 ### Option 3 — Project-level install
@@ -120,7 +120,7 @@ Skills available only when Claude Code is opened from this specific folder:
 git clone https://github.com/santosh91parsa/DecodeAIwithSantosh.git
 
 mkdir -p your-project/.claude/commands
-cp DecodeAIwithSantosh/indmoney/.claude/commands/*.md your-project/.claude/commands/
+cp DecodeAIwithSantosh/indmoney-alpha/.claude/commands/*.md your-project/.claude/commands/
 ```
 
 ### Option 4 — Install individual skills only
@@ -128,8 +128,8 @@ cp DecodeAIwithSantosh/indmoney/.claude/commands/*.md your-project/.claude/comma
 ```bash
 # Example: only install quick-trade and portfolio-alert
 mkdir -p ~/.claude/commands
-cp DecodeAIwithSantosh/indmoney/.claude/commands/quick-trade.md ~/.claude/commands/
-cp DecodeAIwithSantosh/indmoney/.claude/commands/portfolio-alert.md ~/.claude/commands/
+cp DecodeAIwithSantosh/indmoney-alpha/.claude/commands/quick-trade.md ~/.claude/commands/
+cp DecodeAIwithSantosh/indmoney-alpha/.claude/commands/portfolio-alert.md ~/.claude/commands/
 ```
 
 > **Note:** Restart Claude Code after copying skills for them to be picked up.
