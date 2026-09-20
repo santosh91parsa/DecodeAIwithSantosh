@@ -1,0 +1,6 @@
+sample_emails/
+sample_maildir/
+classification_results.json
+__pycache__/
+*.pyc
+.env
